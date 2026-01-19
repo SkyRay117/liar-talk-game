@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>嘘つきトークゲーム 補助ツール</title>
+<style>
+    body {
+        font-family: sans-serif;
+        background: #111;
+        color: #fff;
+        text-align: center;
+        padding: 20px;
+    }
+    button {
+        font-size: 18px;
+        padding: 10px 20px;
+        margin: 10px;
+        cursor: pointer;
+    }
+    input {
+        font-size: 18px;
+        width: 70px;
+        text-align: center;
+    }
+    .hidden {
+        display: none;
+    }
+    .card {
+        border: 1px solid #555;
+        padding: 20px;
+        margin-top: 20px;
+        font-size: 22px;
+        white-space: pre-line;
+    }
+
+    /* 左上リセット */
+    #resetButton {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        font-size: 14px;
+        padding: 6px 10px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #666;
+        cursor: pointer;
+        z-index: 1000;
+    }
+
+    /* 常時表示される話題 */
+    #topicFixed {
+        border-bottom: 1px solid #444;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+</style>
+</head>
+<body>
+
+<button id="resetButton" onclick="resetGame()">最初に戻る</button>
+
+<h1>嘘つきトークゲーム</h1>
+
+<!-- 常時表示：話題 -->
+<div id="topicFixed" class="hidden">
+    <h3>今回の話題</h3>
+    <div class="card" id="topicText"></div>
+</div>
+
+<!-- 初期設定 -->
+<div id="setup">
+    <p>
+        プレイヤー人数：
+        <input type="number" id="playerCount" min="4" max="12" value="4">
+    </p>
+    <p>
+        嘘つき人数：
+        <input type="number" id="liarCount" min="1" value="1">
+    </p>
+    <button onclick="startGame()">ゲーム開始</button>
+</div>
+
+<!-- 話題決定ページ（最初のみ） -->
+<div id="topicSelect" class="hidden">
+    <button onclick="rerollTopic()">話題を変更する</button>
+    <br>
+    <button onclick="goToNotice()">役割確認へ</button>
+</div>
+
+<!-- 注意喚起 -->
+<div id="noticeArea" class="hidden">
+    <h2 id="noticeTitle"></h2>
+    <div class="card">
+        今回は<br>
+        <strong>このプレイヤー1人</strong>だけが画面を見てください。<br><br>
+        周囲に見られていないことを確認したら<br>
+        「確認へ」を押してください。
+    </div>
+    <button onclick="showRole()">確認へ</button>
+</div>
+
+<!-- 役割表示 -->
+<div id="playerArea" class="hidden">
+    <h2 id="playerTitle"></h2>
+    <div class="card" id="roleText"></div>
+    <button onclick="nextPlayer()">確認した</button>
+</div>
+
+<script>
+const topics = [
+    "欲しい能力は何ですか？",
+    "一番大事にしている価値観は？",
+    "無人島に1つ持っていくなら？",
+    "理想の休日の過ごし方は？",
+    "もし職業を自由に選べるなら？",
+    "人生で一番テンションが上がる瞬間は？"
+];
+
+let playerCount = 0;
+let liarCount = 1;
+let liarIndexes = [];
+let currentPlayer = 0;
+let currentTopic = "";
+
+function startGame() {
+    playerCount = parseInt(playerCountInput.value);
+    liarCount = parseInt(liarCountInput.value);
+
+    if (liarCount >= playerCount) {
+        alert("嘘つき人数はプレイヤー人数より少なくしてください");
+        return;
+    }
+
+    liarIndexes = shuffle([...Array(playerCount).keys()]).slice(0, liarCount);
+    currentTopic = randomTopic();
+
+    topicText.textContent = currentTopic;
+
+    setup.classList.add("hidden");
+    topicSelect.classList.remove("hidden");
+    topicFixed.classList.remove("hidden");
+}
+
+function randomTopic() {
+    return topics[Math.floor(Math.random() * topics.length)];
+}
+
+function rerollTopic() {
+    currentTopic = randomTopic();
+    topicText.textContent = currentTopic;
+}
+
+function goToNotice() {
+    topicSelect.classList.add("hidden");
+    noticeArea.classList.remove("hidden");
+    updateNoticeTitle();
+}
+
+function updateNoticeTitle() {
+    noticeTitle.textContent = `プレイヤー ${currentPlayer + 1} の人へ`;
+}
+
+function showRole() {
+    noticeArea.classList.add("hidden");
+    playerArea.classList.remove("hidden");
+
+    playerTitle.textContent = `プレイヤー ${currentPlayer + 1}`;
+
+    roleText.textContent = liarIndexes.includes(currentPlayer)
+        ? "あなたは【嘘つき】です。\n本当は思っていない意見を話してください。"
+        : "あなたは【正直者】です。\n正直な意見を話してください。";
+}
+
+function nextPlayer() {
+    currentPlayer++;
+
+    if (currentPlayer >= playerCount) {
+        playerArea.innerHTML =
+            "<h2>全員確認完了</h2><p>話し合いを始めてください</p>";
+        return;
+    }
+
+    playerArea.classList.add("hidden");
+    noticeArea.classList.remove("hidden");
+    updateNoticeTitle();
+}
+
+function resetGame() {
+    if (confirm("ゲームを最初からやり直しますか？")) {
+        location.reload();
+    }
+}
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
+/* DOM短縮参照 */
+const setup = document.getElementById("setup");
+const topicSelect = document.getElementById("topicSelect");
+const noticeArea = document.getElementById("noticeArea");
+const playerArea = document.getElementById("playerArea");
+const topicFixed = document.getElementById("topicFixed");
+const topicText = document.getElementById("topicText");
+const noticeTitle = document.getElementById("noticeTitle");
+const playerTitle = document.getElementById("playerTitle");
+const roleText = document.getElementById("roleText");
+const playerCountInput = document.getElementById("playerCount");
+const liarCountInput = document.getElementById("liarCount");
+</script>
+
+</body>
+</html>
